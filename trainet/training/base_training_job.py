@@ -56,6 +56,12 @@ class BaseTrainingJob():
         with open(fpath_config, 'w') as f:
             yaml.dump(self.config, f, default_flow_style=False)
 
+        # these are all set when the `run` method is called
+        self.network = None
+        self.trainer = None
+        self.train_dataset = None
+        self.validation_dataset = None
+
     @abstractmethod
     def _instantiate_dataset(self, set_name):
         """Return a dataset object to be used as an iterator during training
@@ -266,23 +272,27 @@ class BaseTrainingJob():
     def run(self):
         """Run training as specified via `self.config`"""
 
-        network = self._instantiate_network()
-        trainer = self._instantiate_trainer()
-        train_dataset, n_steps_per_epoch = (
-            self._instantiate_dataset(set_name='train')
+        self.network = self._instantiate_network()
+        self.trainer = self._instantiate_trainer()
+        n_train_steps_per_epoch = (
+            self.config['dataset']['n_train_steps_per_epoch']
         )
-        validation_dataset, n_validation_steps = (
+        n_validation_steps_per_epoch = (
+            self.config['dataset']['n_validation_steps_per_epoch']
+        )
+        self.train_dataset = self._instantiate_dataset(set_name='train')
+        self.validation_dataset = (
             self._instantiate_dataset(set_name='validation')
         )
 
         callbacks = self._parse_callbacks()
         metrics = self._parse_metrics()
-        trainer.train(
-            network=network,
-            train_dataset=train_dataset,
-            n_steps_per_epoch=n_steps_per_epoch,
-            validation_dataset=validation_dataset,
-            n_validation_steps=n_validation_steps,
+        self.trainer.train(
+            network=self.network,
+            train_dataset=self.train_dataset,
+            n_steps_per_epoch=n_train_steps_per_epoch,
+            validation_dataset=self.validation_dataset,
+            n_validation_steps=n_validation_steps_per_epoch,
             metrics=metrics,
             callbacks=callbacks
         )

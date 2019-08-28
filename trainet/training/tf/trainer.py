@@ -2,41 +2,32 @@
 
 from tensorflow.keras import Model
 
+from trainet.training.base_trainer import BaseTrainer
 from trainet.utils.generic_utils import validate_config
 
 
-class Trainer():
+class Trainer(BaseTrainer):
     """Trainer"""
 
-    required_config_keys = {'batch_size', 'loss', 'n_epochs', 'optimizer'}
+    def _init_optimizer(self):
+        """Initialize the optimizer used to train the network
 
-    def __init__(self, config, dirpath_save, gpu_id=None):
-        """Init
-
-        config must contain the following keys:
-        - str optimizer: optimizer to use when training the network
-        - str loss: loss function to use when training the network
-        - int batch_size: batch size to use during training
-        - int n_epochs: number of epochs to train for
-
-        :param config: specifies the configuration of the trainer
-        :type config: dict
-        :param dirpath_save: directory path to save the model to during
-         training
-        :type dirpath_save: str
-        :param gpu_id: specifies a GPU to use for training
-        :type gpu_id: int
+        :return: initialized optimizer
+        :rtype: object
         """
 
-        validate_config(config, self.required_config_keys)
+        optimizer_spec = self.config['optimizer']
 
-        self.optimizer = config['optimizer']
-        self.loss = config['loss']
-        self.batch_size = config['batch_size']
-        self.n_epochs = config['n_epochs']
+        if isinstance(optimizer_spec, str):
+            optimizer_importpath = optimizer_spec
+            init_params = {}
+        else:
+            optimizer_importpath = optimizer_spec['importpath']
+            init_params = optimizer_spec['init_params']
 
-        self.dirpath_save = dirpath_save
-        self.gpu_id = gpu_id
+        Optimizer = import_object(optimizer_importpath)
+        optimizer = Optimizer(**init_params)
+        return optimizer
 
     def train(self, network, train_dataset, n_steps_per_epoch,
               validation_dataset=None, n_validation_steps=None, metrics=None,
@@ -62,6 +53,8 @@ class Trainer():
         :param callbacks: callbacks to be used during training
         :type callbacks: list[object]
         """
+
+        self.optimizer = self._init_optimizer()
 
         inputs, outputs = network.forward()
         model = Model(inputs=inputs, outputs=outputs)

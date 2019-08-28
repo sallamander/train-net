@@ -2,8 +2,9 @@
 
 from unittest.mock import patch, MagicMock
 
-from tensorflow.keras.layers import Input
 from tensorflow.keras import Model
+from tensorflow.keras.layers import Input
+from tensorflow.keras.optimizers import Adam
 
 from trainet.training.tf.trainer import Trainer
 
@@ -59,7 +60,7 @@ class TestTrainer(object):
         trainer = Trainer(trainer_config, dirpath_save)
 
         assert trainer.dirpath_save == dirpath_save
-        assert trainer.optimizer == 'adam'
+        assert trainer.optimizer is None
         assert trainer.loss == 'categorical_crossentropy'
         assert trainer.batch_size == self.BATCH_SIZE
         assert trainer.n_epochs == 2
@@ -71,7 +72,8 @@ class TestTrainer(object):
         dataset = MagicMock()
         trainer = MagicMock()
         trainer.n_epochs = 2
-        trainer.optimizer = 'adam'
+        trainer._init_optimizer = MagicMock()
+        trainer._init_optimizer.return_value = Adam()
         trainer.loss = 'categorical_crossentropy'
 
         trainer.train = Trainer.train

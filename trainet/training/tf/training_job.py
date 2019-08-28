@@ -51,8 +51,5 @@ class TrainingJob(BaseTrainingJob):
         loader = DataLoader(dataset)
         loading_params = dataset_spec['{}_loading_params'.format(set_name)]
         dataset_gen = loader.get_infinite_iter(**loading_params)
-        n_batches = (
-            len(loader.augmented_dataset) // loading_params['batch_size']
-        )
 
-        return dataset_gen, n_batches
+        return dataset_gen

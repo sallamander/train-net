@@ -7,9 +7,8 @@ import pytest
 from scipy.ndimage.measurements import center_of_mass
 
 from trainet.datasets.toy_image_dataset import (
-    generate_ellipse_coordinates, generate_line_coordinates,
-    generate_rectangle_coordinates, generate_triangle_coordinates,
-    ToyImageDataSet
+    generate_ellipse_coordinates, generate_rectangle_coordinates,
+    generate_triangle_coordinates, ToyImageDataSet
 )
 
 TEST_CASES = [
@@ -98,27 +97,6 @@ def test_generate_ellipse_coordinates():
         )
 
 
-def test_generate_line_coordinates():
-    """Test generate_ellipse_coordinates method
-
-    This acts somewhat like a smoke test, and tests a couple of things:
-    - The returned line is roughly the expected length
-    - The centerpoint of the returned line is in the right place
-    """
-
-    for test_case in TEST_CASES:
-        line_coordinates = generate_line_coordinates(**test_case)
-
-        check_size(
-            line_coordinates, test_case['size_bin'],
-            test_case['image_shape']
-        )
-        check_centerpoint(
-            line_coordinates, test_case['image_shape'],
-            test_case['centerpoint']
-        )
-
-
 def test_generate_rectangle_coordinates():
     """Test generate_rectangle_coordinates method
 
@@ -175,8 +153,8 @@ class TestToyImageDataSet(object):
         """
 
         return {
-            'height': 64, 'width': 64, 'n_classes': 8,
-            'object_colors': ['red', 'yellow', 'orange'],
+            'height': 64, 'width': 64, 'n_classes': 5,
+            'object_colors': ['yellow', 'orange'],
             'object_shapes': ['ellipse'],
         }
 
@@ -200,13 +178,13 @@ class TestToyImageDataSet(object):
         dataset = ToyImageDataSet(dataset_config)
         assert dataset.height == 64
         assert dataset.width == 64
-        assert dataset.n_classes == 8
-        assert dataset.object_colors == ['orange', 'red', 'yellow']
+        assert dataset.n_classes == 5
+        assert dataset.object_colors == ['orange', 'yellow']
         assert dataset.object_shapes == ['ellipse']
         assert dataset.object_sizes == ['small', 'medium', 'large']
-        assert len(dataset.object_spec_options) == 8
-        assert dataset.size == 8
-        assert len(dataset) == 8
+        assert len(dataset.object_spec_options) == 5
+        assert dataset.size == 5
+        assert len(dataset) == 5
 
     def test_init__errors(self, dataset_config, monkeypatch):
         """Test __init__ method
@@ -252,7 +230,7 @@ class TestToyImageDataSet(object):
 
         mock_dataset._get_object_coordinates = mock_get_object_coordinates
         mock_dataset.object_spec_options = {
-            0: ('red', 'triangle', 'small')
+            0: ('blue', 'triangle', 'small')
         }
 
         mock_dataset.__getitem__ = ToyImageDataSet.__getitem__
@@ -260,9 +238,9 @@ class TestToyImageDataSet(object):
         image, label = sample['image'], sample['label']
 
         assert image.shape == (64, 64, 3)
-        assert image[0, 1, 0] == 1
+        assert image[0, 1, 0] == 0
         assert image[0, 1, 1] == 0
-        assert image[0, 1, 2] == 0
+        assert image[0, 1, 2] == 1
         assert label == 0
 
     def test_get_object_coordinates(self, monkeypatch):

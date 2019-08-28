@@ -39,7 +39,7 @@ class TestTrainer(object):
         )
 
         assert trainer.dirpath_save == dirpath_save
-        assert trainer.optimizer == 'Adam'
+        assert trainer.optimizer is None
         assert trainer.loss == 'CrossEntropyLoss'
         assert trainer.batch_size == self.BATCH_SIZE
         assert trainer.n_epochs == 2

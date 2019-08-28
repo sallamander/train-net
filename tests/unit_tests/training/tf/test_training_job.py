@@ -98,20 +98,18 @@ class TestTrainingJob(object):
             'trainet.training.tf.training_job.DataLoader', MockDataLoader
         )
 
-        dataset_gen, n_batches = training_job._instantiate_dataset(
+        dataset_gen = training_job._instantiate_dataset(
             self=training_job, set_name=set_name
         )
 
         assert dataset_gen == 'return_from_get_infinite_iter'
         if set_name == 'train':
-            assert n_batches == 5
             mock_read_csv.assert_called_once_with('fpath/df/train')
             training_job._parse_transformations.assert_called_once_with(
                 {'key3': 'value3', 'key4': 'value4'}
             )
             mock_loader.get_infinite_iter.assert_called_once_with(batch_size=2)
         else:
-            assert n_batches == 2
             mock_read_csv.assert_called_once_with('fpath/df/validation')
             training_job._parse_transformations.assert_called_once_with(
                 {'key5': 'value5', 'key6': 'value6'}

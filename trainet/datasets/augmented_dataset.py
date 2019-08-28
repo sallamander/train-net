@@ -86,6 +86,7 @@ class AugmentedDataset(NumPyDataset):
                 sample_batch_dim_removed[key] = val[0]
             yield sample_batch_dim_removed
 
+    @property
     def input_keys(self):
         """Return the sample keys that denote a learning algorithm's inputs
 
@@ -98,6 +99,7 @@ class AugmentedDataset(NumPyDataset):
         """
         return self.numpy_dataset.input_keys
 
+    @property
     def required_config_keys(self):
         """Return the keys required to be in the config passed to the __init__
 
@@ -106,6 +108,7 @@ class AugmentedDataset(NumPyDataset):
         """
         return self.numpy_dataset.required_config_keys
 
+    @property
     def sample_shapes(self):
         """Return shapes of the sample elements returned from __getitem__
 
@@ -115,6 +118,7 @@ class AugmentedDataset(NumPyDataset):
         """
         return self.numpy_dataset.sample_shapes
 
+    @property
     def sample_types(self):
         """Return data types of the sample elements returned from __getitem__
 
@@ -124,6 +128,7 @@ class AugmentedDataset(NumPyDataset):
         """
         return self.numpy_dataset.sample_types
 
+    @property
     def target_keys(self):
         """Return the sample keys that denote a learning algorithm's targets
 

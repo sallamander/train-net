@@ -10,11 +10,11 @@ from trainet.datasets.base_dataset import NumPyDataset
 from trainet.utils.generic_utils import validate_config
 
 OBJECT_COLORS = {
-    'red': (1, 0, 0), 'orange': (1, 0.6471, 0), 'yellow': (1, 1, 0),
+    'orange': (1, 0.6471, 0), 'yellow': (1, 1, 0),
     'green': (0, 0.5, 0), 'blue': (0, 0, 1), 'indigo': (0.2941, 0, 0.5098),
-    'violet': (0.9333, 0.5098, 0.9333), 'white': (1, 1, 1), 'black': (0, 0, 0)
+    'violet': (0.9333, 0.5098, 0.9333), 'white': (1, 1, 1)
 }
-OBJECT_SHAPES = ['ellipse', 'line', 'rectangle', 'triangle']
+OBJECT_SHAPES = ['ellipse', 'rectangle', 'triangle']
 OBJECT_SIZES = ['small', 'medium', 'large']
 
 MAX_FRACTION_OFFSETS_DICT = {
@@ -68,61 +68,6 @@ def generate_ellipse_coordinates(image_shape, centerpoint, size_bin):
         shape=image_shape
     )
     return ellipse_coordinates
-
-
-def generate_line_coordinates(image_shape, centerpoint, size_bin):
-    """Generate coordinates for a randomly placed line in an image
-
-    This generates image coordinates to place a randomly generated line
-    within an image. The size of the line is bounded by the `size_bin`
-    argument, where 'small' bounds it to > 5% and <=15% of the `image_shape`,
-    'medium' bounds it to >20% and <= 40% of the `image_shape`, and 'large'
-    bounds it to >50% and <=70%, but randomly chosen within those bounds.
-
-    :param image_shape: (height, width) of the image that the line will be
-     placed into
-    :type image_shape: tuple(int)
-    :param centerpoint: (y, x) coordinates denoting the center of the line
-    :type centerpoint: tuple(int)
-    :param size_bin: size bin that the line should fall in, one of
-     `OBJECT_SIZES`
-    :type size_bin: str
-    :return: coordinates into a numpy.ndarray of `image_shape` that represent
-     the randomly generated line
-    :rtype: tuple(numpy.ndarray)
-    """
-
-    size_bounds = SIZE_BOUNDS_DICT[size_bin]
-
-    height_min = int(image_shape[0] * size_bounds[0])
-    height_max = int(image_shape[0] * size_bounds[1])
-    width_min = int(image_shape[1] * size_bounds[0])
-    width_max = int(image_shape[1] * size_bounds[1])
-
-    height = np.random.randint(height_min, height_max)
-    width = np.random.randint(width_min, width_max)
-
-    y_op_choices = np.random.choice(
-        [operator.sub, operator.add], size=2, replace=False
-    )
-    x_op_choices = np.random.choice(
-        [operator.sub, operator.add], size=2, replace=False
-    )
-
-    y_vertices = (
-        int(y_op_choices[0](centerpoint[0], height // 2.)),
-        int(y_op_choices[1](centerpoint[0], height // 2.))
-    )
-    x_vertices = (
-        int(x_op_choices[0](centerpoint[0], width // 2.)),
-        int(x_op_choices[1](centerpoint[0], width // 2.))
-    )
-    line_coordinates = skimage.draw.line(
-        y_vertices[0], x_vertices[0],
-        y_vertices[1], x_vertices[1]
-    )
-
-    return line_coordinates
 
 
 def generate_rectangle_coordinates(image_shape, centerpoint, size_bin):
@@ -237,7 +182,7 @@ class ToyImageDataSet(NumPyDataset):
     the training, validation, or test sets.
 
     Currently, the following types of tasks are supported:
-    - Classification (for arbitrarily many classes up to 108), where the
+    - Classification (for arbitrarily many classes up to 63), where the
       network needs to classify the target type, which is defined by the color
       (see OBJECT_COLORS), shape (see OBJECT_SHAPES), and size (see
       OBJECT_SIZES) of the object in the input image
@@ -379,8 +324,6 @@ class ToyImageDataSet(NumPyDataset):
             coordinates_fn = generate_ellipse_coordinates
         elif object_shape == 'rectangle':
             coordinates_fn = generate_rectangle_coordinates
-        elif object_shape == 'line':
-            coordinates_fn = generate_line_coordinates
         elif object_shape == 'triangle':
             coordinates_fn = generate_triangle_coordinates
 

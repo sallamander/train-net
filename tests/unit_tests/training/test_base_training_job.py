@@ -369,9 +369,13 @@ class TestBaseTrainingJob(object):
         """Test run method"""
 
         training_job = create_autospec(BaseTrainingJob)
-        training_job._instantiate_dataset.return_value = ('mock_dataset', 10)
+        training_job._instantiate_dataset.return_value = 'mock_dataset'
         training_job._parse_callbacks.return_value = ['callbacks_list']
         training_job._parse_metrics.return_value = ['metrics_list']
+        training_job.config = {'dataset': {
+            'n_train_steps_per_epoch': 10,
+            'n_validation_steps_per_epoch': 10
+        }}
         training_job.run = BaseTrainingJob.run
 
         training_job.run(self=training_job)

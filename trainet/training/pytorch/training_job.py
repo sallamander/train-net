@@ -63,17 +63,16 @@ class TrainingJob(BaseTrainingJob):
         dataset_spec = self.config['dataset']
 
         fpath_df_obs_key = 'fpath_df_{}'.format(set_name)
-        if fpath_df_obs_key not in dataset_spec:
-            if set_name == 'train':
-                raise RuntimeError
-            return None, None
-        fpath_df_obs = dataset_spec[fpath_df_obs_key]
-        df_obs = pd.read_csv(fpath_df_obs)
+        if fpath_df_obs_key in dataset_spec:
+            fpath_df_obs = dataset_spec[fpath_df_obs_key]
+            df_obs = pd.read_csv(fpath_df_obs)
+            dataset_spec['init_params']['df_obs'] = df_obs
 
         dataset_importpath = dataset_spec['importpath']
         DataSet = import_object(dataset_importpath)
 
-        dataset = DataSet(df_obs=df_obs, **dataset_spec['init_params'])
+        dataset = DataSet(**dataset_spec['init_params'])
+
         transformations_key = '{}_transformations'.format(set_name)
         transformations = dataset_spec[transformations_key]
         transformations = self._parse_transformations(transformations)
@@ -89,6 +88,5 @@ class TrainingJob(BaseTrainingJob):
         dataset_gen = DataLoader(
             dataset, collate_fn=collate_fn, **loading_params
         )
-        n_batches = len(dataset) // loading_params['batch_size']
 
-        return dataset_gen, n_batches
+        return dataset_gen

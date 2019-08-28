@@ -121,13 +121,12 @@ class TestTrainingJob(object):
             'trainet.training.pytorch.training_job.DataLoader', mock_loader
         )
 
-        dataset_gen, n_batches = training_job._instantiate_dataset(
+        dataset_gen = training_job._instantiate_dataset(
             self=training_job, set_name=set_name
         )
 
         assert dataset_gen == mock_loader_return
         if set_name == 'train':
-            assert n_batches == 5
             mock_read_csv.assert_called_once_with('fpath/df/train')
             training_job._parse_transformations.assert_called_once_with(
                 {'key3': 'value3', 'key4': 'value4'}
@@ -136,7 +135,6 @@ class TestTrainingJob(object):
                 'return_from_dataset_init', 'return_from_parse_transformations'
             )
         else:
-            assert n_batches == 2
             mock_read_csv.assert_called_once_with('fpath/df/validation')
             training_job._parse_transformations.assert_called_once_with(
                 {'key5': 'value5', 'key6': 'value6'}
@@ -156,27 +154,17 @@ class TestTrainingJob(object):
         Errors are expected in two cases:
         - When `set_name` is not one of 'train' or 'validation'
           (AssertionError)
-        - When `set_name==train` and there is no `fpath_df_train` in the
-          `TFTrainingJob.config['dataset']` (RunTimeError)
         """
 
         training_job = MagicMock()
         training_job.config = self._get_mock_config()
-        training_job._instantiate_dataset = (
-            TrainingJob._instantiate_dataset
-        )
+        training_job._instantiate_dataset = TrainingJob._instantiate_dataset
 
         for bad_set_name in ['test', 'val', 't']:
             with pytest.raises(AssertionError):
                 training_job._instantiate_dataset(
                     self=training_job, set_name=bad_set_name
                 )
-
-        del training_job.config['dataset']['fpath_df_train']
-        with pytest.raises(RuntimeError):
-            training_job._instantiate_dataset(
-                self=training_job, set_name='train'
-            )
 
     def test_instantiate_dataset__no_errors(self, monkeypatch):
         """Test _instantiate_dataset method when no errors are expected
@@ -203,10 +191,3 @@ class TestTrainingJob(object):
             self._check_instantiate_dataset(
                 training_job, set_name, monkeypatch
             )
-
-        del training_job.config['dataset']['fpath_df_validation']
-        dataset_gen, n_batches = training_job._instantiate_dataset(
-            self=training_job, set_name='validation'
-        )
-        assert dataset_gen is None
-        assert n_batches is None
