@@ -57,9 +57,12 @@ class Trainer(BaseTrainer):
 
         self.optimizer = self._init_optimizer(network)
 
-        model = Model(network, self.gpu_id)
+        model = Model(
+            network, n_outputs=network.n_outputs, gpu_id=self.gpu_id
+        )
         model.compile(
-            optimizer=self.optimizer, loss=self.loss, metrics=metrics
+            optimizer=self.optimizer, loss=self.loss, metrics=metrics,
+            loss_weights=self.loss_weights
         )
 
         if validation_dataset:

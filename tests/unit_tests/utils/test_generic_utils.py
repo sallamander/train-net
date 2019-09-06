@@ -9,7 +9,7 @@ import pytest
 from trainet.utils.generic_utils import cycle, import_object, validate_config
 
 
-class TestCycle(object):
+class TestCycle():
     """Test `cycle` function"""
 
     def test_cycle__bad_iterable(self):
@@ -84,7 +84,7 @@ class TestCycle(object):
         assert not np.array_equal(non_itertools_batch1, non_itertools_batch2)
 
 
-class TestImportObject(object):
+class TestImportObject():
     """Test `import_object` function"""
 
     def test_import_object__numpy(self):
@@ -98,7 +98,7 @@ class TestImportObject(object):
         assert np.array_equal(array1, array2)
 
 
-class TestValidateConfig(object):
+class TestValidateConfig():
     """Test `validate_config` function"""
 
     def test_validate_config__good(self):

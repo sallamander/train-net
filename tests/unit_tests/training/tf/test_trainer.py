@@ -9,7 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from trainet.training.tf.trainer import Trainer
 
 
-class TestTrainer(object):
+class TestTrainer():
     """Tests for Trainer"""
 
     BATCH_SIZE = 3

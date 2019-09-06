@@ -9,7 +9,7 @@ from trainet.training.tf.data_loader import DataLoader
 from trainet.training.tf.training_job import TrainingJob
 
 
-class TestTrainingJob(object):
+class TestTrainingJob():
     """Tests for TrainingJob"""
 
     def _get_mock_config(self):

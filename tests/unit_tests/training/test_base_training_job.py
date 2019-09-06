@@ -9,7 +9,7 @@ import pytest
 from trainet.training.base_training_job import BaseTrainingJob
 
 
-class TestBaseTrainingJob(object):
+class TestBaseTrainingJob():
     """Tests for BaseTrainingJob"""
 
     def test_init(self, monkeypatch):
@@ -50,7 +50,7 @@ class TestBaseTrainingJob(object):
             assert os.path.exists(expected_fpath_config)
             os.remove(expected_fpath_config)
 
-            assert id(training_job.config) == id(mock_config)
+            assert training_job.config == mock_config
             assert (
                 training_job.required_config_keys ==
                 {'network', 'trainer', 'dataset'}

@@ -141,7 +141,7 @@ def test_generate_triangle_coordinates():
         )
 
 
-class TestToyImageDataSet(object):
+class TestToyImageDataSet():
     """Tests for ToyImageDataSet"""
 
     @pytest.fixture(scope='class')

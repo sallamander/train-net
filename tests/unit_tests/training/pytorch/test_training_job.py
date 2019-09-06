@@ -11,35 +11,75 @@ import torch
 from trainet.training.pytorch.training_job import format_batch, TrainingJob
 
 
-def test_format_batch():
+class TestFormatBatch():
     """Test format batch"""
 
-    height, width = np.random.randint(128, 600, 2)
-    batch_size = np.random.randint(2, 4)
-    num_channels = 3
-    image = torch.from_numpy(
-        np.random.random((height, width, num_channels))
-    )
-    label = torch.from_numpy(
-        np.random.randint(0, 1000, 1)
-    )
+    def test_format_batch(self):
+        """Test format_batch when there is only a single input and target
 
-    batch = [
-        {'image': image, 'label': label} for _ in range(batch_size)
-    ]
-    formatted_batch = format_batch(
-        batch, input_keys=['image'], target_keys=['label']
-    )
-    assert len(formatted_batch) == 2
-    assert np.array_equal(
-        formatted_batch[0], torch.stack([image] * batch_size)
-    )
-    assert np.array_equal(
-        formatted_batch[1], torch.stack([label] * batch_size)
-    )
+        This tests format_batch in the simplest case, where there is only a
+        single input key (i.e. `len(input_keys) == 1`) and a single target key
+        (i.e. `len(target_keys) == 1`), and there are no
+        `duplicate_target_keys`.
+        """
+
+        height, width = np.random.randint(128, 600, 2)
+        batch_size = np.random.randint(2, 4)
+        num_channels = 3
+        image = torch.from_numpy(
+            np.random.random((height, width, num_channels))
+        )
+        label = torch.from_numpy(np.random.randint(0, 1000, 1))
+
+        batch = [
+            {'image': image, 'label': label} for _ in range(batch_size)
+        ]
+        formatted_batch = format_batch(
+            batch, input_keys=['image'], target_keys=['label']
+        )
+        assert len(formatted_batch) == 2
+        assert np.array_equal(
+            formatted_batch[0], torch.stack([image] * batch_size)
+        )
+        assert np.array_equal(
+            formatted_batch[1], torch.stack([label] * batch_size)
+        )
+
+    def test_format_batch__duplicate_target_keys(self):
+        """Test format_batch with duplicate target keys
+
+        This tests the case where there is only a single input and target key,
+        since that is all that is allowed at this point.
+        """
+
+        height, width = np.random.randint(128, 600, 2)
+        batch_size = np.random.randint(2, 4)
+        num_channels = 3
+        image = torch.from_numpy(
+            np.random.random((height, width, num_channels))
+        )
+        label = torch.from_numpy(np.random.randint(0, 1000, 1))
+
+        batch = [
+            {'image': image, 'label': label} for _ in range(batch_size)
+        ]
+        formatted_batch = format_batch(
+            batch, input_keys=['image'], target_keys=['label'],
+            duplicate_target_keys={'label': 2}
+        )
+
+        assert len(formatted_batch) == 2
+        assert isinstance(formatted_batch[1], list)
+        assert len(formatted_batch[1]) == 3
+
+        assert np.array_equal(
+            formatted_batch[0], torch.stack([image] * batch_size)
+        )
+        for target in formatted_batch[1]:
+            assert np.array_equal(target, torch.stack([label] * batch_size))
 
 
-class TestTrainingJob(object):
+class TestTrainingJob():
     """Tests for TrainingJob"""
 
     def _get_mock_config(self):

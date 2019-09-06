@@ -50,7 +50,7 @@ def test_format_batch():
     assert np.array_equal(formatted_batch[1]['labels2'], labels2)
 
 
-class TestDataLoader(object):
+class TestDataLoader():
     """Tests for DataLoader"""
 
     BATCH_SIZE = 2

@@ -20,9 +20,14 @@ class BaseTrainer():
           'importpath' key holding the importpath to an optimizer to use during
           training and an 'init_params' key holding the params to use when
           initializing the optimizer
-        - str loss: loss function to use when training the network
+        - str or list[str] loss: loss function(s) to use when training the
+          network
         - int batch_size: batch size to use during training
         - int n_epochs: number of epochs to train for
+
+        It can additionally contain the following keys:
+        - list[float] loss_weights: weights to apply when training a
+          multi-output network
 
         :param config: specifies the configuration of the trainer
         :type config: dict
@@ -37,6 +42,7 @@ class BaseTrainer():
         self.config = config
 
         self.loss = self.config['loss']
+        self.loss_weights = self.config.get('loss_weights', None)
         self.batch_size = config['batch_size']
         self.n_epochs = config['n_epochs']
 

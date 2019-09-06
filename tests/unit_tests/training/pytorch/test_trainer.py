@@ -7,7 +7,7 @@ from ktorch.model import Model
 from trainet.training.pytorch.trainer import Trainer
 
 
-class TestTrainer(object):
+class TestTrainer():
     """Tests for Trainer"""
 
     BATCH_SIZE = 3

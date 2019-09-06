@@ -7,7 +7,7 @@ import torch
 from trainet.datasets.augmented_dataset import AugmentedDataset
 
 
-class TestAugmentedDataset(object):
+class TestAugmentedDataset():
     """Tests for AugmentedDataset"""
 
     def test_init(self):

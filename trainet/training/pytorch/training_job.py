@@ -1,5 +1,7 @@
 """Class for running a specified pytorch training job"""
 
+from collections import OrderedDict
+
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
@@ -9,7 +11,7 @@ from trainet.training.base_training_job import BaseTrainingJob
 from trainet.utils.generic_utils import import_object
 
 
-def format_batch(batch, input_keys, target_keys):
+def format_batch(batch, input_keys, target_keys, duplicate_target_keys=None):
     """Format the batch from a list of dictionaries to a tuple of tensors
 
     :param batch: batch of inputs and targets
@@ -20,6 +22,11 @@ def format_batch(batch, input_keys, target_keys):
     :param target_keys: names of the keys in `batch` that are targets for a
      model
     :type target_keys: list[str]
+    :param duplicate_target_keys: holds as keys the name of a target_key and as
+     values the number of times to duplicate that target value in what is
+     returned, e.g. {'label': 2} would return back 2 additional copies of the
+     'label' target, resulting in 3 copies total
+    :type duplicate_target_keys: dict{str: int}
     :return: 2-element tuple holding the inputs and targets
     :rtype: tuple(torch.Tensor)
     """
@@ -27,14 +34,43 @@ def format_batch(batch, input_keys, target_keys):
     assert len(input_keys) == 1, 'More than one input_key is not supported.'
     assert len(target_keys) == 1, 'More than one target_key is not supported.'
 
+    duplicate_target_keys = (
+        {} if duplicate_target_keys is None else duplicate_target_keys
+    )
+
+    target_items = []
+    for target_key in target_keys:
+        target_items.append((target_key, []))
+        if target_key in duplicate_target_keys:
+            for idx_target in range(1, duplicate_target_keys[target_key] + 1):
+                target_items.append(
+                    ('{}{}'.format(target_key, idx_target), [])
+                )
+    targets_dict = OrderedDict(target_items)
+
     inputs = []
-    targets = []
     for element in batch:
         inputs.append(element[input_keys[0]])
-        targets.append(element[target_keys[0]])
+
+        for target_key in target_keys:
+            targets_dict[target_key].append(element[target_key])
+            if target_key in duplicate_target_keys:
+                n_duplicates = duplicate_target_keys[target_key]
+                for idx_target in range(1, n_duplicates + 1):
+                    duplicate_target_key = '{}{}'.format(
+                        target_key, idx_target
+                    )
+                    targets_dict[duplicate_target_key].append(
+                        element[target_key]
+                    )
 
     inputs = torch.stack(inputs)
-    targets = torch.stack(targets)
+    if len(target_keys) == 1 and not duplicate_target_keys:
+        targets = torch.stack(targets_dict[target_key])
+    else:
+        targets = []
+        for target_list in targets_dict.values():
+            targets.append(torch.stack(target_list))
 
     return inputs, targets
 
@@ -79,10 +115,12 @@ class TrainingJob(BaseTrainingJob):
 
         dataset = AugmentedDataset(dataset, transformations)
         loading_params = dataset_spec['{}_loading_params'.format(set_name)]
+        duplicate_target_keys = loading_params.pop('duplicate_target_keys', {})
 
         collate_fn = (
             lambda batch: format_batch(
-                batch, dataset.input_keys, dataset.target_keys
+                batch, dataset.input_keys, dataset.target_keys,
+                duplicate_target_keys
             )
         )
         dataset_gen = DataLoader(

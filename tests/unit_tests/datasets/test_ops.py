@@ -35,7 +35,7 @@ def label():
     return label
 
 
-class TestApplyTransformation(object):
+class TestApplyTransformation():
     """Tests for `apply_transformation` over different use cases"""
 
     def test_apply_transformation__image_centering(self, image, label):
@@ -65,7 +65,7 @@ class TestApplyTransformation(object):
         assert sample_centered['label'] == 1
 
 
-class TestPerImageStandardization(object):
+class TestPerImageStandardization():
     """Test `per_image_standardization`"""
 
     def test_per_image_standardization(self):

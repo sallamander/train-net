@@ -1,6 +1,7 @@
 """Class for running a specified training job"""
 
 from abc import abstractmethod
+from copy import deepcopy
 import inspect
 import os
 import time
@@ -45,7 +46,7 @@ class BaseTrainingJob():
         """
 
         validate_config(config, self.required_config_keys)
-        self.config = config
+        self.config = deepcopy(config)
         self.dirpath_job = self._parse_dirpath_job()
 
         self.gpu_id = self.config.get('gpu_id', None)
