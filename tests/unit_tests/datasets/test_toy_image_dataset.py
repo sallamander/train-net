@@ -8,7 +8,7 @@ from scipy.ndimage.measurements import center_of_mass
 
 from trainet.datasets.toy_image_dataset import (
     generate_ellipse_coordinates, generate_rectangle_coordinates,
-    generate_triangle_coordinates, ToyImageDataSet
+    generate_triangle_coordinates, ToyImageDataset
 )
 
 TEST_CASES = [
@@ -141,14 +141,14 @@ def test_generate_triangle_coordinates():
         )
 
 
-class TestToyImageDataSet():
-    """Tests for ToyImageDataSet"""
+class TestToyImageDataset():
+    """Tests for ToyImageDataset"""
 
     @pytest.fixture(scope='class')
     def dataset_config(self):
         """dataset_config object fixture
 
-        :return: dataset_config to be used to instantiate a ToyImageDataSet
+        :return: dataset_config to be used to instantiate a ToyImageDataset
         :rtype: dict
         """
 
@@ -164,7 +164,7 @@ class TestToyImageDataSet():
         This tests that all attributes are set correctly in the __init__.
 
         :param dataset_config: dataset_config object fixture
-        :type: dict
+        :type dataset_config: dict
         :param monkeypatch: monkeypatch object
         :type monkeypatch: _pytest.monkeypatch.MonkeyPatch
         """
@@ -175,7 +175,7 @@ class TestToyImageDataSet():
             mock_validate_config
         )
 
-        dataset = ToyImageDataSet(dataset_config)
+        dataset = ToyImageDataset(dataset_config)
         assert dataset.height == 64
         assert dataset.width == 64
         assert dataset.n_classes == 5
@@ -207,17 +207,17 @@ class TestToyImageDataSet():
         with pytest.raises(ValueError):
             dataset_config = dataset_config.copy()
             dataset_config['object_shapes'] = ['taco']
-            ToyImageDataSet(dataset_config)
+            ToyImageDataset(dataset_config)
 
         with pytest.raises(ValueError):
             dataset_config = dataset_config.copy()
             dataset_config['object_sizes'] = ['gigantic']
-            ToyImageDataSet(dataset_config)
+            ToyImageDataset(dataset_config)
 
         with pytest.raises(ValueError):
             dataset_config = dataset_config.copy()
             dataset_config['object_colors'] = ['sky-blue']
-            ToyImageDataSet(dataset_config)
+            ToyImageDataset(dataset_config)
 
     def test_getitem(self):
         """Test __getitem__ method"""
@@ -233,7 +233,7 @@ class TestToyImageDataSet():
             0: ('blue', 'triangle', 'small')
         }
 
-        mock_dataset.__getitem__ = ToyImageDataSet.__getitem__
+        mock_dataset.__getitem__ = ToyImageDataset.__getitem__
         sample = mock_dataset[2]
         image, label = sample['image'], sample['label']
 
@@ -264,7 +264,7 @@ class TestToyImageDataSet():
         )
 
         mock_dataset._get_object_coordinates = (
-            ToyImageDataSet._get_object_coordinates
+            ToyImageDataset._get_object_coordinates
         )
         object_coordinates = mock_dataset._get_object_coordinates(
             self=mock_dataset, object_shape='ellipse', object_size='small'

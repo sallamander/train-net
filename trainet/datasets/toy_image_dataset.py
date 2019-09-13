@@ -170,7 +170,7 @@ def generate_triangle_coordinates(image_shape, centerpoint, size_bin):
     return triangle_coordinates
 
 
-class ToyImageDataSet(NumPyDataset):
+class ToyImageDataset(NumPyDataset):
     """ToyImageDataSet
 
     This dataset is intended to be used as a means to verify new network

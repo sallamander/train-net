@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from trainet.datasets.augmented_dataset import AugmentedDataset
+from trainet.datasets.keras_dataset import KerasImageDataset
 from trainet.training.base_training_job import BaseTrainingJob
 from trainet.utils.generic_utils import import_object
 
@@ -105,9 +106,11 @@ class TrainingJob(BaseTrainingJob):
             dataset_spec['init_params']['df_obs'] = df_obs
 
         dataset_importpath = dataset_spec['importpath']
-        DataSet = import_object(dataset_importpath)
+        Dataset = import_object(dataset_importpath)
 
-        dataset = DataSet(**dataset_spec['init_params'])
+        if Dataset == KerasImageDataset:
+            dataset_spec['init_params']['split'] = set_name
+        dataset = Dataset(**dataset_spec['init_params'])
 
         transformations_key = '{}_transformations'.format(set_name)
         transformations = dataset_spec[transformations_key]
