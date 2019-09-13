@@ -160,6 +160,10 @@ class BaseTrainingJob():
                     self.dirpath_job, 'weights'
                 )
                 callback_params['save_weights_only'] = True
+            elif 'LRFinder' in callback_importpath:
+                callback_params['dirpath_results'] = os.path.join(
+                    self.dirpath_job, 'lr_finder'
+                )
 
             Callback = import_object(callback_importpath)
             callback = Callback(**callback_params)
@@ -282,9 +286,10 @@ class BaseTrainingJob():
             self.config['dataset']['n_validation_steps_per_epoch']
         )
         self.train_dataset = self._instantiate_dataset(set_name='train')
-        self.validation_dataset = (
-            self._instantiate_dataset(set_name='validation')
-        )
+        if n_validation_steps_per_epoch:
+            self.validation_dataset = (
+                self._instantiate_dataset(set_name='validation')
+            )
 
         callbacks = self._parse_callbacks()
         metrics = self._parse_metrics()
