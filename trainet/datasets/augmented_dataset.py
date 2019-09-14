@@ -15,17 +15,16 @@ class AugmentedDataset(NumPyDataset):
 
         :param numpy_dataset: dataset that provides samples for training
         :type numpy_dataset: datasets.base_dataset.NumPyDataset
-        :param transformations: holds 2 element tuples with the first element
-         being a function to apply to the dataset samples and the second
-         element being a dictionary of keyword arguments to pass to those
-         functions
-        :type transformations: list[tuple(function, dict)]
+        :param transformations: holds 3 element tuples with the first element
+         being a callable to apply to the dataset samples, the second element a
+         dictionary of keyword arguments to pass to those functions, and the
+         3rd element a dictionary mapping sample keys the functions will be
+         applied to keyword arguments to pass the sample elements in by
+        :type transformations: list[tuple(function, dict, dict)]
         """
 
         self.numpy_dataset = numpy_dataset
-        self.transformations = (
-            transformations if not None else []
-        )
+        self.transformations = transformations if not None else []
 
     def __getitem__(self, idx):
         """Return the transformed sample at index `idx` of `self.numpy_dataset`
@@ -39,9 +38,8 @@ class AugmentedDataset(NumPyDataset):
         sample = self.numpy_dataset[idx]
 
         it = self.transformations
-        for transformation_fn, transformation_fn_kwargs in it:
+        for transformation_fn, transformation_fn_kwargs, sample_keys in it:
             transformation_fn_kwargs = transformation_fn_kwargs.copy()
-            sample_keys = transformation_fn_kwargs.pop('sample_keys')
 
             sample = apply_transformation(
                 transformation_fn, sample, sample_keys,

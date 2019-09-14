@@ -12,9 +12,12 @@ def apply_transformation(transformation_fn, sample, sample_keys,
     :type transformation_fn: function
     :param sample: holds the elements to apply the `transformation_fn` to
     :type sample: dict
-    :param sample_keys: holds the keys corresponding to the elements of
-     `sample` to apply the `transformation_fn` to
-    :type sample_keys: list[str]
+    :param sample_keys: holds as keys the sample element names to apply the
+     transformation to, and as values the transformation_kwarg name to pass the
+     sample element in through, e.g. {'image': 'img', 'label': 'target'} will
+     result in transformation_fn(img=sample['image'], target=sample['label'])
+     plus whatever is specified in transformation_fn_kwargs
+    :type sample_keys: dict{str: str}
     :param transformation_fn_kwargs: holds keyword arguments to pass to the
      `transformation_fn`
     :type transformation_fn_kwargs: dict
@@ -24,10 +27,75 @@ def apply_transformation(transformation_fn, sample, sample_keys,
     """
 
     transformation_fn_kwargs = transformation_fn_kwargs or {}
-    for key in sample_keys:
-        sample[key] = transformation_fn(
-            sample[key], **transformation_fn_kwargs
+    sample_keys_inverse = {value: key for key, value in sample_keys.items()}
+
+    if len(sample_keys) > 1:
+        sample_keys_inverse = {
+            value: key for key, value in sample_keys.items()
+        }
+        for sample_key, transformation_fn_kwarg in sample_keys.items():
+            transformation_fn_argument = sample[sample_key]
+            transformation_fn_kwargs[transformation_fn_kwarg] = (
+                transformation_fn_argument
+            )
+
+        transformed_elements = transformation_fn(**transformation_fn_kwargs)
+
+        is_dict = isinstance(transformed_elements, dict)
+        has_correct_keys = (
+            is_dict and set(transformed_elements) == set(sample_keys_inverse)
         )
+        if not (is_dict and has_correct_keys):
+            msg = (
+                'When applying a transformation to multiple elements of the '
+                'sample, the transformation must return a dictionary whose '
+                'keys are equal to the kwarg arguments the sample elements '
+                'were passed in through, e.g. if applying `my_transform` '
+                'to `image` and `label` through the kwargs \'img\' and '
+                '\'target\' (i.e. `my_transform(img=image, target=label)`), '
+                'the returned value must be a dictionary with keys \'img\' '
+                'and \'target\' where the values hold the transformed `image` '
+                'and `label`, respectively.'
+            )
+            raise ValueError(msg)
+
+        it = transformed_elements.items()
+        for transformation_fn_kwarg, transformed_element in it:
+            sample_key = sample_keys_inverse[transformation_fn_kwarg]
+            sample[sample_key] = transformed_element
+    else:
+        assert len(sample_keys) == 1
+
+        sample_key = list(sample_keys.keys())[0]
+        transformation_fn_kwarg = list(sample_keys.values())[0]
+        transformation_fn_argument = sample[sample_key]
+        transformation_fn_kwargs[transformation_fn_kwarg] = (
+            transformation_fn_argument
+        )
+
+        transformed_element = transformation_fn(**transformation_fn_kwargs)
+
+        is_dict = isinstance(transformed_element, dict)
+        if is_dict:
+            has_correct_keys = (
+                set(transformed_element) == set(sample_keys_inverse)
+            )
+            if not has_correct_keys:
+                msg = (
+                    'When applying a transformation to a single element of '
+                    'the sample and returning a dictionary from the '
+                    'transformation, the dictionary key must be equal to the '
+                    'kwarg argument the sample element was passed in through '
+                    ', e.g. if applying `my_transform` to `image` through the '
+                    'kwarg \'img\' (i.e. `my_transform(img=image)`), the '
+                    'returned value must be a dictionary with an \'img\' key '
+                    'and the corresponding value being the transformed '
+                    '`image`.'
+                )
+                raise ValueError(msg)
+            sample[sample_key] = transformed_element[transformation_fn_kwarg]
+        else:
+            sample[sample_key] = transformed_element
 
     return sample
 

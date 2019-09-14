@@ -312,6 +312,58 @@ class TestBaseTrainingJob():
         assert mock_metric.call_count == 0
         assert metrics == [mock_metric, mock_metric]
 
+    def test_parse_albumentations(self, monkeypatch):
+        """Test _parse_albumentations method
+
+        :param monkeypatch: monkeypatch object
+        :type monkeypatch: _pytest.monkeypatch.MonkeyPatch
+        """
+
+        training_job = MagicMock()
+        training_job._parse_albumentations = (
+            BaseTrainingJob._parse_albumentations
+        )
+        mock_import_object = MagicMock()
+        mock_import_object_return = MagicMock()
+        mock_import_object_return.return_value = 'albumentation'
+        mock_import_object.return_value = mock_import_object_return
+        monkeypatch.setattr(
+            'trainet.training.base_training_job.import_object',
+            mock_import_object
+        )
+
+        mock_compose = MagicMock()
+        mock_compose.return_value = 'compose_return'
+        monkeypatch.setattr(
+            'trainet.training.base_training_job.Compose', mock_compose
+        )
+
+        albumentations = {
+            'compose_init_params': {'p': 0.5},
+            'sample_keys': {'image': 'img', 'label': 'target'},
+            'albumentations': [
+                {'transformation1': {'param1': 'value1', 'param2': 'value2'}},
+                {'transformation2': {'param3': 'value3'}}
+            ]
+        }
+
+        processed_albumentations = training_job._parse_albumentations(
+            self=training_job, albumentations=albumentations
+        )
+        assert mock_import_object.call_count == 2
+        mock_import_object.assert_any_call('transformation1')
+        mock_import_object.assert_any_call('transformation2')
+        mock_import_object_return.assert_has_calls(
+            [call(param1='value1', param2='value2'),
+             call(param3='value3')]
+        )
+        mock_compose.assert_called_with(
+            ['albumentation', 'albumentation'], p=0.5
+        )
+        assert processed_albumentations == [
+            ('compose_return', {}, {'image': 'img', 'label': 'target'}),
+        ]
+
     def test_parse_transformations(self, monkeypatch):
         """Test _parse_transformations method
 
@@ -344,25 +396,27 @@ class TestBaseTrainingJob():
         assert mock_import_object.call_count == 0
 
         transformations = [
-            {'transformation1':
-             {'sample_keys': {'value': ['image', 'label']}}},
-            {'transformation2':
-             {'sample_keys': {'value': ['image']},
-              'dtype': {'value': 'torch.long', 'import': True}}}
+            {'transformation1': {
+                'sample_keys': {'image': 'img', 'label': 'target'}
+            }},
+            {'transformation2': {
+                'sample_keys': {'image': 'img'},
+                'param1': 'value1',
+                'param2': 'value2'
+            }}
         ]
 
         processed_transformations = training_job._parse_transformations(
             self=training_job, transformations=transformations
         )
-        assert mock_import_object.call_count == 3
+        assert mock_import_object.call_count == 2
         mock_import_object.assert_has_calls([
             call('transformation1'), call('transformation2'),
-            call('torch.long')
         ])
         assert processed_transformations == [
-            ('import_object_return', {'sample_keys': ['image', 'label']}),
-            ('import_object_return',
-             {'sample_keys': ['image'], 'dtype': 'import_object_return'})
+            ('import_object_return', {}, {'image': 'img', 'label': 'target'}),
+            ('import_object_return', {'param1': 'value1', 'param2': 'value2'},
+             {'image': 'img'})
         ]
 
     def test_run(self):

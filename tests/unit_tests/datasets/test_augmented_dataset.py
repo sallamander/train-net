@@ -56,22 +56,25 @@ class TestAugmentedDataset():
             'element': 2, 'label': 10
         }
         augmented_dataset.transformations = [
-            (0, {'sample_keys': ['element']}),
-            (1, {'sample_keys': ['label']}),
-            (2, {'sample_keys': ['element']})
+            (0, {}, {'element': 'target'}),
+            (1, {'param1': 'value1'}, {'label': 'target'}),
+            (2, {'param2': 'value2'}, {'element': 'target'})
         ]
         sample = augmented_dataset[10]
         assert sample['element'] == 2
         assert sample['label'] == 10
         assert mock_apply_transformation.call_count == 3
         mock_apply_transformation.assert_any_call(
-            0, {'element': 10, 'label': 1}, ['element'], {}
+            0, {'element': 10, 'label': 1},
+            {'element': 'target'}, {}
         )
         mock_apply_transformation.assert_any_call(
-            1, {'element': 2, 'label': 10}, ['label'], {}
+            1, {'element': 2, 'label': 10},
+            {'label': 'target'}, {'param1': 'value1'}
         )
         mock_apply_transformation.assert_any_call(
-            2, {'element': 2, 'label': 10}, ['element'], {}
+            2, {'element': 2, 'label': 10},
+            {'element': 'target'}, {'param2': 'value2'}
         )
 
     def test_len(self):

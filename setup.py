@@ -22,10 +22,11 @@ setup(
     ),
     license='MIT',
     install_requires=[
+        'albumentations>=0.3.2',
+        'ktorch>=0.5.1',
         'scikit-image>=0.15.0',
         'pandas>=0.25.1',
         'pyaml>=19.4.1',
-        'ktorch>=0.5.1'
     ],
     extras_require={
         'tests': [

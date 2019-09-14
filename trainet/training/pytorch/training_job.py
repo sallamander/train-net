@@ -112,11 +112,17 @@ class TrainingJob(BaseTrainingJob):
             dataset_spec['init_params']['split'] = set_name
         dataset = Dataset(**dataset_spec['init_params'])
 
+        albumentations_key = '{}_albumentations'.format(set_name)
+        albumentations = dataset_spec.get(albumentations_key, {})
+        if albumentations:
+            albumentations = self._parse_albumentations(albumentations)
+            dataset = AugmentedDataset(dataset, albumentations)
+
         transformations_key = '{}_transformations'.format(set_name)
         transformations = dataset_spec[transformations_key]
         transformations = self._parse_transformations(transformations)
-
         dataset = AugmentedDataset(dataset, transformations)
+
         loading_params = dataset_spec['{}_loading_params'.format(set_name)]
         duplicate_target_keys = loading_params.pop('duplicate_target_keys', {})
 

@@ -7,6 +7,7 @@ import os
 import time
 
 import yaml
+from albumentations import Compose
 
 from trainet.utils.generic_utils import import_object, validate_config
 
@@ -121,6 +122,55 @@ class BaseTrainingJob():
         )
         return trainer
 
+    def _parse_albumentations(self, albumentations):
+        """Parse the provided albumentations into the expected format
+
+        When passed into the AugmentedDataset (whose import path is
+        listed below), `albumentations` is expected to be a list of two
+        element tuples, where each tuple contains a transformation function to
+        apply as the first element and function kwargs as the second element.
+        When they are parsed from the config (and passed into this function),
+        they are a list of dictionaries. This function mostly reformats them to
+        the format expected by the AugmentedDataset class:
+        - training.datasets.augmented_dataset.AugmentedDataset
+
+        :param albumentations: holds the albumentations to apply to each
+         batch of data, where each transformation is specified as a dictionary
+         with the key equal to the class importpath of the albumentation and
+         the value holds two dictionaries, 'init_params' holding initialization
+         parameters and 'sample_keys' holding a 'value' key specifying what
+         sample key to apply the albumentation to
+        :type albumentations: dict[dict]
+        :return: a one element list holding a 3 element tuple of the composed
+         albumentation that will apply the albumentations, an empty dictionary,
+         and a dictionary mapping sample keys the albumentations will be
+         applied to to the keyword arguments to pass the sample elements by
+        :rtype: list[tuple]
+        """
+
+        compose_init_params = albumentations.pop('compose_init_params', {})
+        sample_keys = albumentations['sample_keys']
+
+        albumentations_fns = []
+        it = albumentations['albumentations']
+        for albumentation in albumentations['albumentations']:
+            assert len(albumentation) == 1
+            albumentation_importpath = list(albumentation.keys())[0]
+            albumentation_init_params = list(albumentation.values())[0]
+
+            Albumentation = import_object(albumentation_importpath)
+            albumentation_fn = Albumentation(**albumentation_init_params)
+            albumentations_fns.append(albumentation_fn)
+
+        albumentation_composition = Compose(
+            albumentations_fns, **compose_init_params
+        )
+        processed_albumentations = [
+            (albumentation_composition, {}, sample_keys)
+        ]
+
+        return processed_albumentations
+
     def _parse_callbacks(self):
         """Return the callback objects used during training
 
@@ -234,15 +284,14 @@ class BaseTrainingJob():
     def _parse_transformations(self, transformations):
         """Parse the provided transformations into the expected format
 
-        When passed into the dataset transformers (whose import paths are
+        When passed into the AugmentedDataset (whose import path is
         listed below), `transformations` is expected to be a list of two
         element tuples, where each tuple contains a transformation function to
         apply as the first element and function kwargs as the second element.
         When they are parsed from the config (and passed into this function),
         they are a list of dictionaries. This function mostly reformats them to
-        the format expected by the following dataset transformer classes:
-        - training.pytorch.dataset_transformer.PyTorchDataSetTransformer
-        - training.tf.data_loader.TFDataLoader
+        the format expected by the AugmentedDataset class:
+        - training.datasets.augmented_dataset.AugmentedDataset
 
         :param transformations: holds the transformations to apply to each
          batch of data, where each transformation is specified as a dictionary
@@ -250,9 +299,12 @@ class BaseTrainingJob():
          and the value equal to a dictionary holding keyword arguments for the
          callable
         :type transformations: list[dict]
-        :return: parsed transformations reformatted for the dataset transformer
-         classes
-        :type transformations: list[tuple]
+        :return: a list holding a 3 element tuples of the transformation
+         functions, a dictionary specifying keyword arguments for the
+         functions, and a dictionary mapping sample keys the transformations
+         will be applied to to the keyword arguments to pass the sample
+         elements by
+        :rtype: list[tuple]
         """
 
         processed_transformations = []
@@ -261,15 +313,10 @@ class BaseTrainingJob():
             transformation_fn_importpath = list(transformation.keys())[0]
             transformation_config = list(transformation.values())[0]
 
+            sample_keys = transformation_config.pop('sample_keys')
             transformation_fn = import_object(transformation_fn_importpath)
-            processed_transformation_config = {}
-            for param, arguments in transformation_config.items():
-                value = arguments['value']
-                if arguments.get('import'):
-                    value = import_object(value)
-                processed_transformation_config[param] = value
             processed_transformations.append(
-                (transformation_fn, processed_transformation_config)
+                (transformation_fn, transformation_config, sample_keys)
             )
 
         return processed_transformations
