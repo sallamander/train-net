@@ -69,7 +69,7 @@ class KerasImageDataset(NumPyDataset):
         image = image.astype(self.sample_types['image'])
 
         label = self.targets[idx].item()
-
+        
         sample = {'image': image, 'label': label}
         return sample
 
@@ -139,11 +139,11 @@ class KerasImageDataset(NumPyDataset):
         :rtype: dict{str: tuple}
         """
 
-        n_channels = self.inputs.shape[1]
+        n_channels = self.inputs.shape[-1]
         height = self.config['height']
         width = self.config['width']
 
-        image_shape = (n_channels, height, width)
+        image_shape = (height, width, n_channels)
 
         n_classes = self.config['n_classes']
         label_shape = (n_classes, )

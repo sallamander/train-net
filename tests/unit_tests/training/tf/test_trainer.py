@@ -24,7 +24,7 @@ class TestTrainer():
         :rtype: unittest.mock.MagicMock
         """
 
-        def mock_forward():
+        def mock_build():
             """Return mock `inputs` and `outputs`"""
 
             inputs = Input(shape=(self.HEIGHT, self.WIDTH, self.NUM_CHANNELS))
@@ -32,7 +32,7 @@ class TestTrainer():
             return inputs, outputs
 
         alexnet = MagicMock()
-        alexnet.forward = mock_forward
+        alexnet.build = mock_build
         return alexnet
 
     def test_init(self, monkeypatch):

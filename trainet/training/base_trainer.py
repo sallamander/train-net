@@ -75,7 +75,7 @@ class BaseTrainer():
     @abstractmethod
     def train(self, network, train_dataset, n_steps_per_epoch,
               validation_dataset=None, n_validation_steps=None, metrics=None,
-              callbacks=None):
+              callbacks=None, initial_epoch=0):
         """Train the network as specified via the __init__ parameters
 
         :param network: network object to use for training
@@ -96,6 +96,8 @@ class BaseTrainer():
         :type metrics: list[object]
         :param callbacks: callbaks to be used during training
         :type callbacks: list[object]
+        :param initial_epoch: epoch at which to start training
+        :type initial_epoch: int
         """
 
         raise NotImplementedError

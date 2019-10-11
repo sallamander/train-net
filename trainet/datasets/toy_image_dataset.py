@@ -368,11 +368,8 @@ class ToyImageDataset(NumPyDataset):
         :rtype: dict{str: tuple}
         """
 
-        height = self.config['height']
-        width = self.config['width']
-
-        image_shape = (height, width, 3)
-        label_shape = (self.config['n_classes'], )
+        image_shape = (self.height, self.width, 3)
+        label_shape = (self.n_classes, )
 
         return {'image': image_shape, 'label': label_shape}
 

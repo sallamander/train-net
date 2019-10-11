@@ -3,7 +3,7 @@
 from tensorflow.keras import Model
 
 from trainet.training.base_trainer import BaseTrainer
-from trainet.utils.generic_utils import validate_config
+from trainet.utils.generic_utils import import_object, validate_config
 
 
 class Trainer(BaseTrainer):
@@ -53,10 +53,10 @@ class Trainer(BaseTrainer):
         :param callbacks: callbacks to be used during training
         :type callbacks: list[object]
         """
-
+        
         self.optimizer = self._init_optimizer()
 
-        inputs, outputs = network.forward()
+        inputs, outputs = network.build()
         model = Model(inputs=inputs, outputs=outputs)
         model.compile(
             optimizer=self.optimizer, loss=self.loss, metrics=metrics

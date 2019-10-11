@@ -148,12 +148,6 @@ class TestTrainingJob():
                     self=training_job, set_name=bad_set_name
                 )
 
-        del training_job.config['dataset']['fpath_df_train']
-        with pytest.raises(RuntimeError):
-            training_job._instantiate_dataset(
-                self=training_job, set_name='train'
-            )
-
     def test_instantiate_dataset__no_errors(self, monkeypatch):
         """Test _instantiate_dataset method when no errors are expected
 
@@ -162,8 +156,6 @@ class TestTrainingJob():
         - The returned output is as expected
 
         It checks these for when `set_name` is 'train' and 'validation'.
-        Additionally, this tests that when there is no `fpath_df_validation`
-        specified, there is no dataset returned.
 
         :param monkeypatch: monkeypatch object
         :type monkeypatch: _pytest.monkeypatch.MonkeyPatch
@@ -177,10 +169,3 @@ class TestTrainingJob():
             self._check_instantiate_dataset(
                 training_job, set_name, monkeypatch
             )
-
-        del training_job.config['dataset']['fpath_df_validation']
-        dataset_gen, n_batches = training_job._instantiate_dataset(
-            self=training_job, set_name='validation'
-        )
-        assert dataset_gen is None
-        assert n_batches is None
