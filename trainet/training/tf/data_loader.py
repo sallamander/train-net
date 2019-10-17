@@ -35,6 +35,34 @@ class DataLoader():
 
         self.augmented_dataset = augmented_dataset
 
+    def _calculate_sample_shapes(self):
+        """Calculate the array shapes of each sample element
+
+        Barring any one-hot encoding transformations that are specified, this
+        method simply pulls the `self.augmented_dataset.sample_shapes` property
+        and returns it. If there are any one-hot encodings specified, though,
+        it adjusts the sample shape to (num_classes, ) as specified in the
+        one-hot encoding dictionary. Target keys that are to be one-hot encoded
+        will have a sample shape of (1, ) (since they are an integer), but
+        after one-hot encoding tensorflow will exepect a shape of (n_classes):
+
+        :return: shapes of each sample element that will be returned when
+         training
+        :rtype: dict[key: tuple]
+        """
+
+        sample_shapes = {}
+        for name, shape in self.augmented_dataset.sample_shapes.items():
+            for transformation in self.augmented_dataset.transformations:
+                transformation_fn = transformation[0]
+                if transformation_fn == tf.keras.utils.to_categorical:
+                    sample_keys = transformation[2]
+                    if name in sample_keys:
+                        shape = (transformation[1]['num_classes'], )
+            sample_shapes[name] = tf.TensorShape(shape)
+
+        return sample_shapes
+
     def get_infinite_iter(self, batch_size, shuffle=False,
                           prefetch_buffer_size=1, n_workers=0):
         """Return a tf.data.Dataset that iterates over the data indefinitely
@@ -54,10 +82,7 @@ class DataLoader():
         generator = self.augmented_dataset.as_generator(
             shuffle=shuffle, n_workers=n_workers
         )
-        sample_shapes = {
-            name: tf.TensorShape(shape)
-            for name, shape in self.augmented_dataset.sample_shapes.items()
-        }
+        sample_shapes = self._calculate_sample_shapes()
         dataset = tf.data.Dataset.from_generator(
             lambda: generator, self.augmented_dataset.sample_types,
             sample_shapes

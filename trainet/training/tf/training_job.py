@@ -3,13 +3,19 @@
 import pandas as pd
 
 from trainet.datasets.augmented_dataset import AugmentedDataset
+from trainet.datasets.hdf5_dataset import HDF5Dataset
 from trainet.training.base_training_job import BaseTrainingJob
 from trainet.training.tf.data_loader import DataLoader
+from trainet.training.tf.utils import set_global_random_seed
 from trainet.utils.generic_utils import import_object
 
 
 class TrainingJob(BaseTrainingJob):
-    """Runs a training job as specified via a config"""
+    """Runs a training job as specified via a config
+
+    See the parent class docstring for details on how to specify a config for
+    training.
+    """
 
     def _instantiate_dataset(self, set_name):
         """Return a dataset object to be used as an iterator during training
@@ -40,6 +46,11 @@ class TrainingJob(BaseTrainingJob):
         dataset_importpath = dataset_spec['importpath']
         DataSet = import_object(dataset_importpath)
         dataset = DataSet(**dataset_spec['init_params'])
+
+        fpath_hdf5_key = 'fpath_hdf5_{}'.format(set_name)
+        if fpath_hdf5_key in dataset_spec:
+            fpath_hdf5 = dataset_spec[fpath_hdf5_key]
+            dataset = HDF5Dataset(fpath_hdf5, dataset)
 
         albumentations_key = '{}_albumentations'.format(set_name)
         albumentations = dataset_spec.get(albumentations_key, {})

@@ -1,68 +1,70 @@
 """Class for running a specified training job"""
 
-from abc import abstractmethod
-from copy import deepcopy
 import inspect
+import json
 import os
 import time
+from abc import abstractmethod
+from collections import defaultdict
+from copy import deepcopy
 
 import yaml
+import pandas as pd
 from albumentations import Compose
+from tensorflow.keras.models import load_model
 
+from trainet.training.tf.callbacks import StateSaver
 from trainet.utils.generic_utils import import_object, validate_config
 
 
 class BaseTrainingJob():
-    """Runs a training job as specified via a config"""
+    """Runs a training job as specified via a config
 
-    required_config_keys = {'network', 'trainer', 'dataset'}
+    The `config` must contain the following keys:
+    - dict network: specifies the network class to train as well as how to
+      build it; see the `_instantiate_network` method for details
+    - dict trainer: specifies the trainer class to train with; see the
+      `_instantiate_trainer` method for details
+    - dict dataset: specifies the training and validation dataset classes
+      to train with, as well as how to load the data from the datasets; see
+      the `_instantiate_dataset` method in child classes for details
 
-    def __init__(self, config):
-        """Init
-
-        The `config` must contain the following keys:
-        - dict network: specifies the network class to train as well as how to
-          build it; see the `_instantiate_network` method for details
-        - dict trainer: specifies the trainer class to train with; see the
-          `_instantiate_trainer` method for details
-        - dict dataset: specifies the training and validation dataset classes
-          to train with, as well as how to load the data from the datasets; see
-          the `_instantiate_dataset` method in child classes for details
-
-        It can contain the following additional keys:
-        - str 'job_name': optional name given to the job; the timestamp of when
-          the job started will be appended to the job_name to uniquely identify
-          the directory name the job will be saved to
-        - str 'dirpath_jobs': optional directory path to save job directory in,
-          resulting in the job being saved to 'dirpath_jobs/dirname_job';
-          defaults to `os.environ['HOME']/training_jobs`
-        - int gpu_id: GPU to run the job on; defaults to None, which means the
-          job runs on the CPU
+    It can contain the following additional keys:
+    - str 'job_name': optional name given to the job; the timestamp of when
+      the job started will be appended to the job_name to uniquely identify
+      the directory name the job will be saved to
+    - str 'dirpath_jobs': optional directory path to save job directory in,
+      resulting in the job being saved to 'dirpath_jobs/dirname_job';
+      defaults to `os.environ['HOME']/training_jobs`
+    - int gpu_id: GPU to run the job on; defaults to None, which means the
+      job runs on the CPU
+    - int random_seed: random seed to use during training; defaults to 0
 
         See the `_parse_dirpath_job` method for details on where the results of
         the training job will be stored.
+    """
 
-        :param config: config file specifying a training job to run
-        :type config: dict
+    required_config_keys = {'network', 'trainer', 'dataset'}
+
+    def __init__(self):
+        """Init
+
+        See class docstring for details on how to specify a config that will
+        run a training job.
         """
 
-        validate_config(config, self.required_config_keys)
-        self.config = deepcopy(config)
-        self.dirpath_job = self._parse_dirpath_job()
+        # these are all set when the `run` or `resume` method is called
+        self.config = None
+        self.dirpath_job = None
+        self.random_seed = None
+        self.gpu_id = None
 
-        self.gpu_id = self.config.get('gpu_id', None)
-        if self.gpu_id is not None:
-            os.environ['CUDA_VISIBLE_DEVICES'] = str(self.gpu_id)
-
-        fpath_config = os.path.join(self.dirpath_job, 'config.yml')
-        with open(fpath_config, 'w') as f:
-            yaml.dump(self.config, f, default_flow_style=False)
-
-        # these are all set when the `run` method is called
         self.network = None
         self.trainer = None
         self.train_dataset = None
         self.validation_dataset = None
+
+        self.callbacks = None
 
     @abstractmethod
     def _instantiate_dataset(self, set_name):
@@ -171,7 +173,7 @@ class BaseTrainingJob():
 
         return processed_albumentations
 
-    def _parse_callbacks(self):
+    def _parse_callbacks(self, resume):
         """Return the callback objects used during training
 
         This relies on the `trainer::callbacks` section of `self.config`. This
@@ -181,6 +183,9 @@ class BaseTrainingJob():
         __init__ params; if a str only, it is expected to be the importpath to
         the callback.
 
+        :param resume: if True, training is being resumed from a previous
+         training_job; used to know whether to append to 'history.csv' or not
+        :type resume: bool
         :return: callback objects used during training
         :rtype: list[object]
         """
@@ -201,6 +206,7 @@ class BaseTrainingJob():
                 callback_params['filename'] = os.path.join(
                     self.dirpath_job, 'history.csv'
                 )
+                callback_params['append'] = resume
             elif 'TensorBoard' in callback_importpath:
                 callback_params['log_dir'] = os.path.join(
                     self.dirpath_job, 'tensorboard'
@@ -218,6 +224,8 @@ class BaseTrainingJob():
             Callback = import_object(callback_importpath)
             callback = Callback(**callback_params)
             callbacks.append(callback)
+
+        callbacks.append(StateSaver(training_job=self))
 
         return callbacks
 
@@ -321,11 +329,22 @@ class BaseTrainingJob():
 
         return processed_transformations
 
-    def run(self):
-        """Run training as specified via `self.config`"""
+    def _run(self, initial_epoch, resume):
+        """Run training from `initial_epoch` as specified via `self.config`
+
+        :param initial_epoch: epoch at which to start training
+        :type initial_epoch: int
+        :param resume: if True, load model state before kicking off training
+        :type resume: bool
+        """
+
+        self.gpu_id = self.config.get('gpu_id', None)
+        if self.gpu_id is not None:
+            os.environ['CUDA_VISIBLE_DEVICES'] = str(self.gpu_id)
 
         self.network = self._instantiate_network()
         self.trainer = self._instantiate_trainer()
+
         n_train_steps_per_epoch = (
             self.config['dataset']['n_train_steps_per_epoch']
         )
@@ -338,14 +357,132 @@ class BaseTrainingJob():
                 self._instantiate_dataset(set_name='validation')
             )
 
-        callbacks = self._parse_callbacks()
+        self.callbacks = self._parse_callbacks(resume)
         metrics = self._parse_metrics()
+        if resume:
+            self.load_state()
+        else:
+            optimizer = self.trainer.init_optimizer()
+            model = self.trainer.load_model(self.network, metrics, optimizer)
+            self.trainer.set_model(model)
+
         self.trainer.train(
-            network=self.network,
             train_dataset=self.train_dataset,
             n_steps_per_epoch=n_train_steps_per_epoch,
             validation_dataset=self.validation_dataset,
             n_validation_steps=n_validation_steps_per_epoch,
-            metrics=metrics,
-            callbacks=callbacks
+            callbacks=self.callbacks,
+            initial_epoch=initial_epoch
         )
+
+    def load_state(self):
+        """Load saved training job state
+
+        If called, this assumes that `self.dirpath_job` contains a 'state.json'
+        and a 'model.h5' file. The 'state.json' will be used to
+        restore callbacks, and the 'model_last.h5' will be used to restore the
+        state of the model object that is being trained, including the state of
+        the optimizer. It also assumes that `self.trainer` is set and the
+        trainer has been instantiated.
+        """
+
+        fname_state = os.path.join(self.dirpath_job, 'state.json')
+        fname_model_h5 = os.path.join(self.dirpath_job, 'model_last.h5')
+
+        with open(fname_state) as f:
+            state = json.load(f)
+
+        for callback in self.callbacks:
+            callback_name = callback.__class__.__name__
+            callback_supports_state = hasattr(callback, 'set_state')
+            callback_state_saved = callback_name in state['callbacks']
+            if callback_supports_state and callback_state_saved:
+                callback.set_state(state['callbacks'][callback_name])
+
+        model = load_model(fname_model_h5)
+        self.trainer.set_model(model)
+
+    def resume(self, dirpath_job):
+        """Resume training from the provided job directory
+
+        Training will resume from the most recent epoch completed. If no full
+        epochs of training were completed, this method will start with initial
+        epoch 0. Further, if training was interrupted before a config file was
+        saved, such that there is no config in `dirpath_job`, this method will
+        raise a RuntimeError.
+
+        :param dirpath_job: directory path of a previously started training job
+        :type dirpath_job: str
+        :raises: RuntimeError, when there is no 'config.yml' in `dirpath_job`
+        """
+
+        self.dirpath_job = dirpath_job
+        fpath_config = os.path.join(dirpath_job, 'config.yml')
+        try:
+            with open(fpath_config) as f:
+                self.config = yaml.load(f, Loader=yaml.FullLoader)
+        except FileNotFoundError:
+            msg = (
+                'When using the `resume` method the `dirpath_job` must '
+                'contain a config.yml, and {} does not contain one.'
+            ).format(self.dirpath_job)
+            raise FileNotFoundError(msg)
+
+        validate_config(self.config, self.required_config_keys)
+
+        fpath_history = os.path.join(self.dirpath_job, 'history.csv')
+        try:
+            df_history = pd.read_csv(fpath_history)
+            initial_epoch = len(df_history)
+        except FileNotFoundError:
+            initial_epoch = 0
+
+        self._run(initial_epoch, resume=True)
+
+    def run(self, config):
+        """Run training as specified via config
+
+        See the class docstring for how to specify a config for running a given
+        training job.
+
+        :param config: config file specifying a training job to run
+        :type config: dict
+        """
+
+        validate_config(config, self.required_config_keys)
+        self.config = config
+        self.dirpath_job = self._parse_dirpath_job()
+
+        fpath_config = os.path.join(self.dirpath_job, 'config.yml')
+        with open(fpath_config, 'w') as f:
+            yaml.dump(self.config, f, default_flow_style=False)
+
+        self._run(initial_epoch=0, resume=False)
+
+    def save_state(self):
+        """Save the current state of the training job
+
+        This saves a couple of different things:
+        - The state of all callbacks that support state saving
+        - A model.h5 file that can load the model back in with
+          `keras.model.load_model`
+        """
+
+        current_state = defaultdict(dict)
+        for callback in self.callbacks:
+            callback_name = callback.__class__.__name__
+            callback_supports_state = hasattr(callback, 'set_state')
+            if callback_supports_state:
+                current_state['callbacks'][callback_name] = (
+                    callback.get_state()
+                )
+
+        current_state_as_json = json.dumps(
+            current_state, sort_keys=True, indent=4
+        )
+        fpath_state_json = os.path.join(self.dirpath_job, 'state.json')
+        with open(fpath_state_json, 'w+') as f:
+            f.write(current_state_as_json)
+
+        fpath_model = os.path.join(self.dirpath_job, 'model_last.h5')
+        self.trainer.model.save(fpath_model)
